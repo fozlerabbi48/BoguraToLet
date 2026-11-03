@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
@@ -15,23 +16,50 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// নিরাপদ CORS অরিজিন হ্যান্ডলার
+const clientUrl = (process.env.CLIENT_URL || '').trim();
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  clientUrl,
+].filter(Boolean);
+
+const corsOriginChecker = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    origin.endsWith('.vercel.app');
+
+  if (isAllowed) {
+    callback(null, origin);
+  } else {
+    callback(null, false);
+  }
+};
+
 // সকেট আইও ইনিশিয়ালাইজ
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: corsOriginChecker,
     methods: ['GET', 'POST'],
     credentials: true,
   },
 });
 
 // গ্লোবাল সিকিউরিটি ও বডি পার্সার
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: corsOriginChecker,
     credentials: true,
   })
 );
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -55,6 +83,9 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
+
+// uploads ফোল্ডারকে স্ট্যাটিক হিসেবে ওপেন করা (যাতে আপলোড হওয়া ছবি দেখা যায়)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // বেস ও হেলথ চেক রুট
 app.get('/', (req, res) => {
@@ -88,19 +119,15 @@ app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/social', socialRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
-app.use('/api/v1/verifications', verificationRoutes); // <--- সব রুটের সাথে 404 এর ওপরে
+app.use('/api/v1/verifications', verificationRoutes);
 
 // ==================== 404 Route Handler ====================
-// এটি অবশ্যই সব API Routes-এর নিচে থাকবে
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
     message: `Cannot find route: ${req.originalUrl}`,
   });
 });
-const path = require('path');
-// uploads ফোল্ডারকে স্ট্যাটিক হিসেবে ওপেন করা
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // গ্লোবাল এরর হ্যান্ডলার
 const errorHandler = require('./middleware/errorHandler');
