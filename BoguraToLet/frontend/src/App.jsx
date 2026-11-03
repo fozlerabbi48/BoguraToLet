@@ -1,8 +1,8 @@
+// frontend/src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Navbar from './layouts/Navbar';
-import Footer from './layouts/Footer';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,82 +10,100 @@ import PropertyDetails from './pages/PropertyDetails';
 import CreateProperty from './pages/CreateProperty';
 import MyProperties from './pages/MyProperties';
 import AdminDashboard from './pages/AdminDashboard';
+import { useAuth } from './context/AuthContext';
 
-// 🔒 শুধু অ্যাডমিনদের জন্য সিকিউরিটি গার্ড
-function AdminRoute({ children }) {
+// লগইন না থাকলে সরাসরি /login পেজে পাঠিয়ে দেবে
+const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="py-20 text-center text-sm text-gray-400">যাচাই করা হচ্ছে...</div>;
-  }
-
-  const isAdmin = user && ['Super Admin', 'Admin', 'Moderator'].includes(user.role);
-
-  return isAdmin ? children : <Navigate to="/" replace />;
-}
-
-// 🔐 লগইন গার্ড
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="py-20 text-center text-sm text-gray-400">যাচাই করা হচ্ছে...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+      </div>
+    );
   }
 
   return user ? children : <Navigate to="/login" replace />;
-}
+};
+
+// শুধুমাত্র Super Admin ও Admin-এর জন্য
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
+  const isAdmin = user && ['Super Admin', 'Admin', 'Moderator'].includes(user.role);
+  return isAdmin ? children : <Navigate to="/" replace />;
+};
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col justify-between">
-          <div>
-            <Navbar />
-            <main>
-              <Routes>
-                {/* পাবলিক রুট */}
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/properties/:id" element={<PropertyDetails />} />
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+      <Navbar />
 
-                {/* লগইন করা থাকতে হবে */}
-                <Route
-                  path="/properties/create"
-                  element={
-                    <ProtectedRoute>
-                      <CreateProperty />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/my-properties"
-                  element={
-                    <ProtectedRoute>
-                      <MyProperties />
-                    </ProtectedRoute>
-                  }
-                />
+      <main className="flex-grow">
+        <Routes>
+          {/* শুধুমাত্র Login এবং Register সবার জন্য খোলা */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-                {/* শুধু অ্যাডমিন */}
-                <Route
-                  path="/admin"
-                  element={
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  }
-                />
+          {/* বাকি সব পেজে ঢুকতে হলে বাধ্যতামূলক লগইন/রেজিস্ট্রেশন লাগবে */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/properties/:id"
+            element={
+              <ProtectedRoute>
+                <PropertyDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/create-property"
+            element={
+              <ProtectedRoute>
+                <CreateProperty />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-properties"
+            element={
+              <ProtectedRoute>
+                <MyProperties />
+              </ProtectedRoute>
+            }
+          />
 
-                {/* ভুল লিংকে গেলে হোমপেজ */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-          </div>
-          <Footer />
-        </div>
-      </AuthProvider>
-    </BrowserRouter>
+          {/* অ্যাডমিন ড্যাশবোর্ড */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+
+          {/* অন্য কোনো লিঙ্কে গেলে হোমে পাঠাবে */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+
+      <Footer />
+    </div>
   );
 }
