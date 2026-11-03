@@ -16,7 +16,9 @@ export const AuthProvider = ({ children }) => {
   // সকেট কানেকশন ইনিশিয়ালাইজেশন
   useEffect(() => {
     if (token && user) {
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://boguratolet-api.onrender.com';
+
+
       const newSocket = io(socketUrl, {
         auth: { token },
         transports: ['websocket', 'polling'],

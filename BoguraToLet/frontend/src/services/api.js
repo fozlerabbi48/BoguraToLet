@@ -1,14 +1,18 @@
 import axios from 'axios';
 
+// Render-এর লাইভ ব্যাকএন্ড এপিআই সরাসরি ডিফল্ট হিসেবে দেওয়া হলো
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1',
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    'https://boguratolet-api.onrender.com/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-// রিকোয়েস্ট ইন্টারসেপ্টর: টোকেন থাকলে হেডারে পাঠানো
+// রিকোয়েস্ট ইন্টারসেপ্টর: টোকেন পাঠানো
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -20,7 +24,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// রেসপন্স ইন্টারসেপ্টর: 401 হলে অটো লগআউট
+// রেসপন্স ইন্টারসেপ্টর
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
