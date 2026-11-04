@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const Property = require('../models/Property');
 const cloudinary = require('../config/cloudinary');
 
@@ -17,6 +20,30 @@ const uploadToCloudinary = (buffer) =>
       )
       .end(buffer);
   });
+
+// Helper: Local fallback upload when Cloudinary is not configured or fails
+const uploadToLocal = async (file, req) => {
+  const uploadsDir = path.join(__dirname, '../uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const ext = path.extname(file.originalname) || '.jpg';
+  const filename = `prop_${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext}`;
+  const filePath = path.join(uploadsDir, filename);
+
+  await fs.promises.writeFile(filePath, file.buffer);
+
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.get('host');
+  const baseUrl = process.env.BACKEND_URL || `${protocol}://${host}`;
+
+  return {
+    url: `${baseUrl}/uploads/${filename}`,
+    publicId: filename,
+    isLocal: true,
+  };
+};
 
 // @desc    Create new Property Advertisement
 // @route   POST /api/v1/properties
@@ -51,22 +78,46 @@ const createProperty = async (req, res, next) => {
       address,
     } = req.body;
 
-    // ছবি ঐচ্ছিক: না দিলে খালি অ্যারে থাকবে, কোনো ডিফল্ট ছবি বসবে না
+    // ছবি হ্যান্ডলিং: ১টি ছবি দিলে ১টি, একাধিক দিলে সবগুলো সেভ হবে
     let propertyImages = [];
 
     if (req.files && req.files.length > 0) {
-      try {
-        for (let i = 0; i < req.files.length; i++) {
-          const uploaded = await uploadToCloudinary(req.files[i].buffer);
+      const hasCloudinary = Boolean(
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_SECRET
+      );
+
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        let uploaded = null;
+
+        // ১. ক্লাউডিনারি ক্রেডেনশিয়াল থাকলে ক্লাউডিনারিতে আপলোড
+        if (hasCloudinary) {
+          try {
+            uploaded = await uploadToCloudinary(file.buffer);
+          } catch (cErr) {
+            console.warn(`Cloudinary upload failed for image ${i}, trying local:`, cErr.message);
+          }
+        }
+
+        // ২. ক্লাউডিনারি না থাকলে বা ফেইল করলে লোকাল স্টোরেজে সেভ
+        if (!uploaded) {
+          try {
+            uploaded = await uploadToLocal(file, req);
+          } catch (locErr) {
+            console.error('Local upload fallback failed:', locErr.message);
+          }
+        }
+
+        // সফল হলে অ্যারেতে যোগ করা
+        if (uploaded) {
           propertyImages.push({
             url: uploaded.url,
             publicId: uploaded.publicId,
             isCover: i === 0,
           });
         }
-      } catch (uploadErr) {
-        console.warn('Cloudinary upload failed, posting without images:', uploadErr.message);
-        propertyImages = [];
       }
     }
 
@@ -104,6 +155,7 @@ const createProperty = async (req, res, next) => {
       success: true,
       message: 'Property advertisement published successfully!',
       data: property,
+      property,
     });
   } catch (error) {
     console.error('Create property error:', error);
@@ -145,7 +197,6 @@ const getProperties = async (req, res, next) => {
       if (maxRent) query.rent.$lte = Number(maxRent);
     }
 
-    // শুধু অনুমোদিত ফিল্ড দিয়ে সর্ট
     const allowedSort = ['createdAt', 'rent', 'viewCount'];
     const sortField = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
 
@@ -169,6 +220,7 @@ const getProperties = async (req, res, next) => {
       totalPages: Math.ceil(total / Number(limit)),
       currentPage: Number(page),
       data: properties,
+      properties,
     });
   } catch (error) {
     next(error);
@@ -193,7 +245,7 @@ const getPropertyById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
-    res.status(200).json({ success: true, data: property });
+    res.status(200).json({ success: true, data: property, property });
   } catch (error) {
     next(error);
   }
@@ -277,13 +329,23 @@ const deleteProperty = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this property' });
     }
 
-    // Cloudinary থেকেও ছবি মুছে ফেলা
+    // ছবি ডিলিট করা (Cloudinary বা Local)
     for (const img of property.images || []) {
       if (img.publicId) {
+        // ১. ক্লাউডিনারি থেকে ডিলিট
         try {
           await cloudinary.uploader.destroy(img.publicId);
         } catch (e) {
-          console.warn('Cloudinary delete failed:', e.message);
+          // ignore
+        }
+        // ২. লোকাল ফাইল থাকলে ডিলিট
+        try {
+          const localFilePath = path.join(__dirname, '../uploads', img.publicId);
+          if (fs.existsSync(localFilePath)) {
+            fs.unlinkSync(localFilePath);
+          }
+        } catch (e) {
+          // ignore
         }
       }
     }
