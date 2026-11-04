@@ -64,11 +64,13 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* বিজ্ঞাপন পোস্ট করার রুটগুলো অবশ্যই :id এর আগে থাকবে */}
               <Route
-                path="/properties/:id"
+                path="/properties/create"
                 element={
                   <ProtectedRoute>
-                    <PropertyDetails />
+                    <CreateProperty />
                   </ProtectedRoute>
                 }
               />
@@ -80,6 +82,17 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* প্রপার্টি ডিটেইলস পেজ */}
+              <Route
+                path="/properties/:id"
+                element={
+                  <ProtectedRoute>
+                    <PropertyDetails />
+                  </ProtectedRoute>
+                }
+              />
+
               <Route
                 path="/my-properties"
                 element={
@@ -99,7 +112,7 @@ export default function App() {
                 }
               />
 
-              {/* অন্য কোনো লিঙ্কে গেলে হোমে পাঠাবে */}
+              {/* অন্য কোনো ভুল লিঙ্কে গেলে হোমে রিডাইরেক্ট করবে */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
