@@ -1,7 +1,15 @@
+
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+
 import Navbar from './components/Navbar';
 import Footer from './layouts/Footer';
+
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -9,37 +17,43 @@ import PropertyDetails from './pages/PropertyDetails';
 import CreateProperty from './pages/CreateProperty';
 import MyProperties from './pages/MyProperties';
 import AdminDashboard from './pages/AdminDashboard';
+
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// লগইন না থাকলে সরাসরি /login পেজে পাঠিয়ে দেবে
+const Loading = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+  </div>
+);
+
+// Login Required
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
+  if (loading) return <Loading />;
 
   return user ? children : <Navigate to="/login" replace />;
 };
 
-// শুধুমাত্র Super Admin ও Admin-এর জন্য
+// Admin Only
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
+  if (loading) return <Loading />;
 
-  const isAdmin = user && ['Super Admin', 'Admin', 'Moderator'].includes(user.role);
+  const isAdmin =
+    user && ['Super Admin', 'Admin', 'Moderator'].includes(user.role);
+
   return isAdmin ? children : <Navigate to="/" replace />;
+};
+
+// Auth Pages
+const GuestRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <Loading />;
+
+  return user ? <Navigate to="/" replace /> : children;
 };
 
 export default function App() {
@@ -47,15 +61,34 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+
           <Navbar />
 
           <main className="flex-grow">
             <Routes>
-              {/* শুধুমাত্র Login এবং Register সবার জন্য উন্মুক্ত */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
 
-              {/* বাকি সব পেজে ঢুকতে হলে বাধ্যতামূলক লগইন/রেজিস্ট্রেশন লাগবে */}
+              {/* Login and Register Only */}
+
+              <Route
+                path="/login"
+                element={
+                  <GuestRoute>
+                    <Login />
+                  </GuestRoute>
+                }
+              />
+
+              <Route
+                path="/register"
+                element={
+                  <GuestRoute>
+                    <Register />
+                  </GuestRoute>
+                }
+              />
+
+              {/* All Pages Require Login */}
+
               <Route
                 path="/"
                 element={
@@ -65,15 +98,24 @@ export default function App() {
                 }
               />
 
-              {/* বিজ্ঞাপন পোস্ট করার রুটগুলো অবশ্যই :id এর আগে থাকবে */}
               <Route
-                path="/properties/create"
+                path="/properties"
                 element={
                   <ProtectedRoute>
-                    <CreateProperty />
+                    <Home />
                   </ProtectedRoute>
                 }
               />
+
+              <Route
+                path="/properties/:id"
+                element={
+                  <ProtectedRoute>
+                    <PropertyDetails />
+                  </ProtectedRoute>
+                }
+              />
+
               <Route
                 path="/create-property"
                 element={
@@ -83,12 +125,11 @@ export default function App() {
                 }
               />
 
-              {/* প্রপার্টি ডিটেইলস পেজ */}
               <Route
-                path="/properties/:id"
+                path="/properties/create"
                 element={
                   <ProtectedRoute>
-                    <PropertyDetails />
+                    <CreateProperty />
                   </ProtectedRoute>
                 }
               />
@@ -102,7 +143,8 @@ export default function App() {
                 }
               />
 
-              {/* অ্যাডমিন ড্যাশবোর্ড */}
+              {/* Admin Dashboard */}
+
               <Route
                 path="/admin"
                 element={
@@ -112,12 +154,18 @@ export default function App() {
                 }
               />
 
-              {/* অন্য কোনো ভুল লিঙ্কে গেলে হোমে রিডাইরেক্ট করবে */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Unknown Routes */}
+
+              <Route
+                path="*"
+                element={<Navigate to="/" replace />}
+              />
+
             </Routes>
           </main>
 
           <Footer />
+
         </div>
       </AuthProvider>
     </BrowserRouter>
