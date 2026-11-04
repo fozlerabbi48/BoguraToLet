@@ -1,1 +1,32 @@
-@import "tailwindcss";
+
+/* Navbar entrance animation */
+@keyframes navbarFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-navbar {
+  animation: navbarFadeIn 0.5s ease-out;
+}
+
+/* Mobile menu animation */
+@keyframes mobileMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-menu-animation {
+  animation: mobileMenuIn 0.3s ease-out;
+}
