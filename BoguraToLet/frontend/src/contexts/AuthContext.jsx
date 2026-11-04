@@ -18,14 +18,12 @@ export const AuthProvider = ({ children }) => {
     if (token && user) {
       const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://boguratolet-api.onrender.com';
 
-
       const newSocket = io(socketUrl, {
         auth: { token },
         transports: ['websocket', 'polling'],
       });
 
       newSocket.on('connect', () => {
-        console.log('[Socket] Connected:', newSocket.id);
         newSocket.emit('setup', user.id || user._id);
       });
 
@@ -45,9 +43,10 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const res = await api.get('/auth/me');
-          if (res.data) {
-            setUser(res.data);
-            localStorage.setItem('user', JSON.stringify(res.data));
+          const userData = res?.data || res;
+          if (userData) {
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
           }
         } catch (err) {
           console.error('[AuthCheck] Failed:', err.message);
@@ -59,11 +58,19 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
-  // লগইন ফাংশন
+  // লগইন ফাংশন (ইমেইল অথবা মোবাইল নম্বর দিয়ে)
   const login = async (loginData, password) => {
     const res = await api.post('/auth/login', { login: loginData, password });
-    const { token: newToken, user: userData } = res.data;
     
+    // রেসপন্স ডাটা এক্সট্র্যাক্ট করা
+    const payload = res?.data || res;
+    const newToken = payload?.token || res?.token;
+    const userData = payload?.user || res?.user;
+
+    if (!newToken) {
+      throw new Error(payload?.message || 'লগইন ব্যর্থ হয়েছে।');
+    }
+
     setToken(newToken);
     setUser(userData);
     localStorage.setItem('token', newToken);
