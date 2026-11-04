@@ -1,8 +1,7 @@
-// frontend/src/App.jsx
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import Footer from './layouts/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,7 +9,7 @@ import PropertyDetails from './pages/PropertyDetails';
 import CreateProperty from './pages/CreateProperty';
 import MyProperties from './pages/MyProperties';
 import AdminDashboard from './pages/AdminDashboard';
-import { useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // লগইন না থাকলে সরাসরি /login পেজে পাঠিয়ে দেবে
 const ProtectedRoute = ({ children }) => {
@@ -45,65 +44,69 @@ const AdminRoute = ({ children }) => {
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-      <Navbar />
+    <BrowserRouter>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+          <Navbar />
 
-      <main className="flex-grow">
-        <Routes>
-          {/* শুধুমাত্র Login এবং Register সবার জন্য খোলা */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <main className="flex-grow">
+            <Routes>
+              {/* শুধুমাত্র Login এবং Register সবার জন্য উন্মুক্ত */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-          {/* বাকি সব পেজে ঢুকতে হলে বাধ্যতামূলক লগইন/রেজিস্ট্রেশন লাগবে */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/properties/:id"
-            element={
-              <ProtectedRoute>
-                <PropertyDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/create-property"
-            element={
-              <ProtectedRoute>
-                <CreateProperty />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-properties"
-            element={
-              <ProtectedRoute>
-                <MyProperties />
-              </ProtectedRoute>
-            }
-          />
+              {/* বাকি সব পেজে ঢুকতে হলে বাধ্যতামূলক লগইন/রেজিস্ট্রেশন লাগবে */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/properties/:id"
+                element={
+                  <ProtectedRoute>
+                    <PropertyDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/create-property"
+                element={
+                  <ProtectedRoute>
+                    <CreateProperty />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-properties"
+                element={
+                  <ProtectedRoute>
+                    <MyProperties />
+                  </ProtectedRoute>
+                }
+              />
 
-          {/* অ্যাডমিন ড্যাশবোর্ড */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            }
-          />
+              {/* অ্যাডমিন ড্যাশবোর্ড */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                }
+              />
 
-          {/* অন্য কোনো লিঙ্কে গেলে হোমে পাঠাবে */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+              {/* অন্য কোনো লিঙ্কে গেলে হোমে পাঠাবে */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
 
-      <Footer />
-    </div>
+          <Footer />
+        </div>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
