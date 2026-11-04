@@ -1,31 +1,3 @@
-const mongoose = require('mongoose');
-
-const conversationSchema = new mongoose.Schema(
-  {
-    participants: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-      },
-    ],
-    property: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Property',
-      default: null,
-    },
-    lastMessage: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Message',
-      default: null,
-    },
-    unreadCounts: {
-      type: Map,
-      of: Number,
-      default: {},
-    },
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model('Conversation', conversationSchema);
+// Re-export from Chat.js to avoid Mongoose duplicate model overwrite error
+const { Conversation } = require('./Chat');
+module.exports = Conversation;

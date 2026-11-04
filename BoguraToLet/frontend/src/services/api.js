@@ -15,6 +15,15 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // FormData পাঠানোর সময় ডিফল্ট JSON Content-Type মুছে দেওয়া,
+    // যাতে ব্রাউজার নিজে multipart boundary সেট করে
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      // ছবি আপলোডে সময় বেশি লাগে (Render cold start সহ), তাই টাইমআউট বাড়ানো
+      config.timeout = 60000;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

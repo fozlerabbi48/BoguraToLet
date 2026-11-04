@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, ArrowLeft, Loader2, ImagePlus, X } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Loader2, ImagePlus, X, MapPin } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -50,6 +50,7 @@ export default function CreateProperty() {
     isFurnished: false,
     hasParking: false,
     addressDetails: '',
+    googleMapUrl: '',
     availableFrom: new Date().toISOString().split('T')[0],
   });
 
@@ -178,7 +179,10 @@ export default function CreateProperty() {
     if (!formData.addressDetails.trim()) {
       return setError('সুনির্দিষ্ট ঠিকানা বা রোডের নাম দিন!');
     }
-    if (!districtId || !selectedUpazila || !selectedArea) {
+    if (formData.googleMapUrl.trim() && !/^https?:\/\//i.test(formData.googleMapUrl.trim())) {
+      return setError('Google Maps-এর সম্পূর্ণ লিংক দিন (https://...)।');
+    }
+    if (!districtId || !selectedUpazila || (areas.length > 0 && !selectedArea)) {
       return setError('উপজেলা ও এলাকা নির্বাচন করুন!');
     }
     if (!/^01[3-9]\d{8}$/.test(formData.contactPhone.trim())) {
@@ -206,19 +210,21 @@ export default function CreateProperty() {
       fd.append('isFurnished', formData.isFurnished ? 'true' : 'false');
       fd.append('hasParking', formData.hasParking ? 'true' : 'false');
       fd.append('addressDetails', formData.addressDetails.trim());
+      fd.append('googleMapLocation', formData.googleMapUrl.trim());
       fd.append('availableFrom', formData.availableFrom);
-      fd.append('division', divisionId);
-      fd.append('district', districtId);
-      fd.append('upazila', selectedUpazila);
-      fd.append('area', selectedArea);
-      // ছবি না দিলে ব্যাকএন্ড নিজেই ডিফল্ট কভার বসিয়ে দেয়
+      
+      if (divisionId) fd.append('division', divisionId);
+      if (districtId) fd.append('district', districtId);
+      if (selectedUpazila) fd.append('upazila', selectedUpazila);
+      if (selectedArea) fd.append('area', selectedArea);
+
+      // images অ্যারের সব ছবি যোগ করা
       images.forEach((img) => fd.append('images', img.file));
 
-      const res = await api.post('/properties', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/properties', fd);
 
-      const newId = res.data?.data?._id || res.data?._id;
+      // রেসপন্স অবজেক্ট থেকে আইডি বের করা
+      const newId = res?.data?._id || res?.property?._id || res?._id;
       alert('অভিনন্দন! আপনার বাসা ভাড়ার বিজ্ঞাপনটি সফলভাবে প্রকাশিত হয়েছে।');
       navigate(newId ? `/properties/${newId}` : '/');
     } catch (err) {
@@ -333,6 +339,23 @@ export default function CreateProperty() {
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none"
               />
             </div>
+          </div>
+
+          {/* Google Maps লোকেশন লিংক */}
+          <div>
+            <label className="block text-sm font-bold text-gray-800 mb-1.5 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              <span>Google Maps লোকেশন লিংক (ঐচ্ছিক)</span>
+            </label>
+            <input
+              type="url"
+              name="googleMapUrl"
+              value={formData.googleMapUrl}
+              onChange={handleChange}
+              placeholder="Google Maps থেকে Share link কপি করে এখানে দিন (https://maps.app.goo.gl/...)"
+              className={inputCls}
+            />
+            <p className="text-xs text-gray-400 mt-1">Google Maps অ্যাপ বা ব্রাউজার থেকে Share → Copy Link করে বসিয়ে দিন।</p>
           </div>
 
           {/* ভাড়া, ক্যাটাগরি ও ফোন */}
