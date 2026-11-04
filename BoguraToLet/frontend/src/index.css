@@ -1,5 +1,7 @@
 
-/* Navbar entrance animation */
+@import "tailwindcss";
+
+/* Navbar Animation */
 @keyframes navbarFadeIn {
   from {
     opacity: 0;
@@ -15,7 +17,7 @@
   animation: navbarFadeIn 0.5s ease-out;
 }
 
-/* Mobile menu animation */
+/* Mobile Menu Animation */
 @keyframes mobileMenuIn {
   from {
     opacity: 0;
@@ -29,4 +31,9 @@
 
 .mobile-menu-animation {
   animation: mobileMenuIn 0.3s ease-out;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
